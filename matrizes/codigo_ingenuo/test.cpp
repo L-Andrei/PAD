@@ -2,6 +2,21 @@
 #include <random>
 #include "matrix.hpp"
 
+template <typename T>
+Matrix<T> simple_multiply(const Matrix<T>& m1, const Matrix<T>& m2) {
+    Matrix<T> res(m1.row(), m2.column());
+    for (size_t i = 0; i < m1.row(); ++i) {
+        for (size_t j = 0; j < m2.column(); ++j) {
+            T sum = 0;
+            for (size_t k = 0; k < m1.column(); ++k) {
+                sum += m1(i, k) * m2(k, j);
+            }
+            res(i, j) = sum;
+        }
+    }
+    return res;
+}
+
 TEST(MatrixTest, ConstructorAndDimensions) {
     Matrix<int> m(3, 4);
     EXPECT_EQ(m.row(), 3);
@@ -216,19 +231,15 @@ TEST(MatrixTest, CompoundOperators) {
     EXPECT_EQ(m(0, 0), 8);
 }
 
-TEST(MatrixTest, MultiplicationLarge2048_RandomDouble) {
-    size_t size = 2048;
+TEST(MatrixTest, MultiplicationMassive4098_RandomDouble) {
+    size_t size = 4098;
     
     Matrix<double> m1(size, size);
     Matrix<double> m2(size, size);
 
-    // Configuração do gerador de números aleatórios.
-    // Usamos uma seed fixa (42) para garantir que o teste seja reproduzível 
-    // e não falhe aleatoriamente em diferentes execuções.
     std::mt19937 rng(42);
-    std::uniform_real_distribution<double> dist(-10.0, 10.0);
+    std::uniform_real_distribution<double> dist(-2.0, 2.0);
 
-    // Preenche as matrizes sequencialmente
     for (size_t i = 0; i < size; i++) {
         for (size_t j = 0; j < size; j++) {
             m1(i, j) = dist(rng);
@@ -236,34 +247,25 @@ TEST(MatrixTest, MultiplicationLarge2048_RandomDouble) {
         }
     }
 
-    // Executa a multiplicação pesada otimizada
-    Matrix<double> res = m1 * m2;
+    Matrix<double> res_optimized = m1 * m2;
 
-    // Verifica se as dimensões se mantiveram corretas
-    EXPECT_EQ(res.row(), size);
-    EXPECT_EQ(res.column(), size);
+    EXPECT_EQ(res_optimized.row(), size);
+    EXPECT_EQ(res_optimized.column(), size);
 
-    // Função auxiliar para verificar pontos específicos da matriz
-    // Ela calcula a multiplicação tradicional (escalar) para uma única célula
     auto verify_cell = [&](size_t row, size_t col) {
         double expected = 0.0;
         for (size_t k = 0; k < size; k++) {
             expected += m1(row, k) * m2(k, col);
         }
         
-        // Compara o resultado SIMD/Blocado com o resultado Escalar
-        // Usamos uma tolerância de 1e-5 para cobrir a imprecisão do ponto flutuante
-        EXPECT_NEAR(res(row, col), expected, 1e-5);
+        EXPECT_NEAR(res_optimized(row, col), expected, 1e-9);
     };
 
-    // Canto superior esquerdo e direito
     verify_cell(0, 0);
-    verify_cell(0, 2047);
+    verify_cell(0, size - 1);
 
-    // Centro da matriz
-    verify_cell(1024, 1024);
+    verify_cell(size / 2, size / 2);
 
-    // Canto inferior esquerdo e direito
-    verify_cell(2047, 0);
-    verify_cell(2047, 2047);
+    verify_cell(size - 1, 0);
+    verify_cell(size - 1, size - 1);
 }

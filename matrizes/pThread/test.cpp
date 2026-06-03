@@ -2,6 +2,7 @@
 #include <random>
 #include "matrix.hpp"
 
+
 template <typename T>
 Matrix<T> simple_multiply(const Matrix<T>& m1, const Matrix<T>& m2) {
     Matrix<T> res(m1.row(), m2.column());
@@ -266,7 +267,6 @@ TEST(MatrixTest, MultiplicationLarge2048_RandomDouble) {
         }
     }
 }*/
-
 
 TEST(MatrixTest, MultiplicationMassive4098_RandomDouble) {
     size_t size = 4098;

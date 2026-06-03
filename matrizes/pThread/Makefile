@@ -1,6 +1,6 @@
 # Variáveis do Compilador
 CXX = g++
-CXXFLAGS = -Wall -Wextra -std=c++20 -O3 -mavx2 -mfma
+CXXFLAGS = -Wall -Wextra -std=c++20 -O3 -mavx2 -mfma -pthread
 LDFLAGS = -lgtest -lgtest_main -pthread
 
 # Nomes dos arquivos

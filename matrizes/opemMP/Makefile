@@ -1,7 +1,7 @@
 # Variáveis do Compilador
 CXX = g++
-CXXFLAGS = -Wall -Wextra -std=c++20 -O3 -fopenmp
-LDFLAGS = -lgtest -lgtest_main -pthread -fopenmp
+CXXFLAGS = -Wall -Wextra -std=c++20 -O3 -fopenmp -mavx2 -mfma
+LDFLAGS = -lgtest -lgtest_main -pthread
 
 # Nomes dos arquivos
 TARGET = programa_matriz

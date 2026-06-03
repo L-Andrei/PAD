@@ -2,30 +2,33 @@
 #include <initializer_list>
 #include <algorithm>
 #include <experimental/simd>
-#include <omp.h>
+#include <omp.h> // Biblioteca do OpenMP para multithreading simplificado
 
 using namespace std;
+// Alias para encurtar a digitação da biblioteca SIMD (que ainda é experimental no C++)
 namespace stdx = std::experimental;
 
+// Classe genérica para Matrizes, usando Template para aceitar int, float, double, etc.
 template <typename T>
 class Matrix {
 
     private:
-    size_t r;
-    size_t c;
+    size_t r; // Número de linhas (rows)
+    size_t c; // Número de colunas (columns)
+    
+    // Os dados são armazenados de forma contígua (Row-major layout).
+    // O array 1D é a melhor escolha para performance, pois a CPU consegue
+    // carregar blocos inteiros da memória para o Cache de uma só vez, 
+    // evitando os famosos "cache misses" que ponteiros duplos causariam.
     T* d;
 
-    // Row major layout.
-
     public:
-    size_t column() const {
-        return this->c;
-    }
+    
+    // Getters rápidos para as dimensões
+    size_t column() const { return this->c; }
+    size_t row() const { return this->r; }
 
-    size_t row() const {
-        return this->r;
-    }
-
+    // Construtor padrão: inicializa a matriz com zeros.
     Matrix(size_t i, size_t j) {
         this->r = i;
         this->c = j;
@@ -33,12 +36,15 @@ class Matrix {
 
         size_t sum = r * c;
 
+        // O OpenMP entra em ação aqui. Essa diretiva diz ao compilador para 
+        // dividir as iterações desse loop 'for' entre as threads disponíveis na CPU.
         #pragma omp parallel for
         for(size_t k = 0; k < sum; k++) {
             d[k] = 0;
         }
     }
 
+    // Construtor usando initializer_list (permite sintaxe como: Matrix<int> m(2, 2, {1, 2, 3, 4}))
     Matrix(size_t i, size_t j, initializer_list<T> list) {
         this->r = i;
         this->c = j;
@@ -47,6 +53,7 @@ class Matrix {
         size_t k = 0;
 
         for (const T& val : list) {
+            // Prevenção de estouro de memória caso a lista seja maior que a matriz
             if (k >= r * c) {
                 break;
             }
@@ -54,23 +61,27 @@ class Matrix {
             k++;
         }
         
+        // Completa com zeros caso a lista seja menor que a capacidade
         while (k < r * c) {
             d[k] = 0;
             k++;
         }
     }
 
+    // Construtor a partir de um array C-style preexistente.
     Matrix(size_t i, size_t j, const T* data_array) {
         this->r = i;
         this->c = j;
         d = new T[r * c];
 
+        // Paralelizando a cópia dos dados com OpenMP
         #pragma omp parallel for
         for (size_t k = 0; k < r * c; ++k) {
             d[k] = data_array[k];
         }
     }
 
+    // Construtor de cópia (fundamental para evitar que duas matrizes apontem para a mesma memória)
     Matrix(const Matrix& o) {
         this->r = o.r;
         this->c = o.c;
@@ -82,24 +93,30 @@ class Matrix {
         }
     }
 
+    // Destrutor: limpa o array alocado dinamicamente.
     ~Matrix() {
         delete[] d;
     }
 
+    // Sobrecarga do operador () para acessar elementos via mat(linha, coluna).
+    // O cálculo j + (c * i) faz o mapeamento do plano 2D para o índice 1D no array.
     T& operator()(size_t i, size_t j) {
         return d[j + (this->c * i)];
     }
 
+    // Versão const do acesso, garantindo que matrizes constantes possam ser lidas.
     const T& operator()(size_t i, size_t j) const {
         return d[j + (this->c * i)];
     }
 
+    // Operador de atribuição (Copy Assignment)
     Matrix& operator=(const Matrix& o) {
+        // Proteção contra auto-atribuição (ex: mat = mat)
         if (this == &o) { 
             return *this;
         }
 
-        delete[] d;
+        delete[] d; // Descarta a memória antiga
 
         r = o.r;
         c = o.c;
@@ -112,9 +129,16 @@ class Matrix {
         return *this;
     }
 
+    // =========================================================================
+    // Operações Matemáticas (Aceleradas por OpenMP)
+    // =========================================================================
+
+    // Soma elemento a elemento
     Matrix operator+(const Matrix& o) const {
         Matrix res(r, c);
 
+        // O OpenMP vai paralelizar o laço mais externo (as linhas).
+        // Cada thread da CPU vai processar um conjunto de linhas de forma independente.
         #pragma omp parallel for
         for (size_t i = 0; i < r; i++) {
             for(size_t j = 0; j < c; j++) {
@@ -124,6 +148,7 @@ class Matrix {
         return res;
     }
 
+    // Soma de escalar (Matriz + Número)
     Matrix operator+(T v) const {
         Matrix res(r, c);
 
@@ -136,9 +161,9 @@ class Matrix {
         return res;
     }
 
+    // Subtração de matrizes
     Matrix operator-(const Matrix& o) const {
         Matrix res(r, c);
-
 
         #pragma omp parallel for
         for (size_t i = 0; i < r; i++) {
@@ -149,6 +174,7 @@ class Matrix {
         return res;
     }
 
+    // Subtração escalar
     Matrix operator-(T v) const {
         Matrix res(r, c);
 
@@ -161,15 +187,26 @@ class Matrix {
         return res;
     }
 
+    // =========================================================================
+    // Core da Otimização: A "Trindade" da Performance 
+    // (OpenMP + Cache Tiling + Instruções SIMD)
+    // =========================================================================
     Matrix operator*(const Matrix& o) const {
         Matrix res(r, o.column());
 
+        // Tamanhos dos blocos para o "Cache Blocking" ou "Tiling".
+        // O objetivo é fragmentar o cálculo em pedaços pequenos o suficiente 
+        // para residirem no cache L1 do processador durante as operações.
         constexpr size_t BLOCK = 256;
-        constexpr size_t SUB_BLOCK = 64; 
+        constexpr size_t SUB_BLOCK = 128; 
         
+        // Setup para as instruções SIMD (Single Instruction, Multiple Data)
         using simd_t = stdx::native_simd<T>;
         constexpr size_t SIMD_WIDTH = simd_t::size();
 
+        // 1º Passo: Transpor a Matriz B. 
+        // Lemos matrizes da esquerda pra direita de forma rápida. Lemos de cima para baixo 
+        // de forma muito lenta. Transpor a segunda matriz alinha os dados e evita engasgos na memória.
         Matrix o_t(o.column(), o.row());
         for(size_t i = 0; i < o.row(); i++) {
             for(size_t j = 0; j < o.column(); j++) {
@@ -177,15 +214,19 @@ class Matrix {
             }
         }
 
+        // 2º Passo: Multithreading.
+        // Paralelizamos a iteração dos blocos externos. Cada thread pega um naco da matriz.
         #pragma omp parallel for
         for (size_t i_b = 0; i_b < r; i_b += BLOCK) {
             for (size_t j_b = 0; j_b < o.column(); j_b += BLOCK) {
                 for (size_t k_b = 0; k_b < c; k_b += BLOCK) {
                     
+                    // Limites seguros do bloco principal
                     size_t i_b_max = min(i_b + BLOCK, r);
                     size_t j_b_max = min(j_b + BLOCK, o.column());
                     size_t k_b_max = min(k_b + BLOCK, c);
 
+                    // Refinando o Tiling com os sub-blocos
                     for (size_t i_sb = i_b; i_sb < i_b_max; i_sb += SUB_BLOCK) {
                         for (size_t j_sb = j_b; j_sb < j_b_max; j_sb += SUB_BLOCK) {
                             for (size_t k_sb = k_b; k_sb < k_b_max; k_sb += SUB_BLOCK) {
@@ -194,20 +235,26 @@ class Matrix {
                                 size_t j_max = min(j_sb + SUB_BLOCK, j_b_max);
                                 size_t k_max = min(k_sb + SUB_BLOCK, k_b_max);
 
+                                // Multiplicação real acontecendo no núcleo dos blocos
                                 for (size_t i = i_sb; i < i_max; i++) {
                                     for (size_t j = j_sb; j < j_max; j++) {
                                         
                                         simd_t sum_vec = 0;
                                         size_t k = k_sb;
 
+                                        // 3º Passo: Vetorização (SIMD).
+                                        // A CPU faz várias multiplicações num único pulso de clock.
                                         for (; k + SIMD_WIDTH <= k_max; k += SIMD_WIDTH) {
+                                            // 'element_aligned' afirma que a memória está perfeitamente alinhada
                                             simd_t a_vec(&((*this)(i, k)), stdx::element_aligned);
                                             simd_t b_vec(&(o_t(j, k)), stdx::element_aligned);
                                             sum_vec += a_vec * b_vec; 
                                         }
 
+                                        // Reduz o vetor carregado em um único número (escalar)
                                         T scalar_sum = stdx::reduce(sum_vec);
 
+                                        // Calcula qualquer rebarba que tenha sobrado e não coube no SIMD
                                         for (; k < k_max; k++) {
                                             scalar_sum += (*this)(i, k) * o_t(j, k);
                                         }
@@ -224,6 +271,7 @@ class Matrix {
         return res;
     }
     
+    // Multiplicação por valor escalar
     Matrix operator*(T v) const {
         Matrix res(r, c);
 
@@ -236,6 +284,7 @@ class Matrix {
         return res;
     }
 
+    // Transposição da própria matriz
     void transpose() {
         Matrix n(c, r);
 
@@ -245,43 +294,27 @@ class Matrix {
                 n(j, i) = (*this)(i, j);
             }
         }
-        (*this) = n;
+        (*this) = n; // Reutiliza o operator= seguro
     }
 
+    // Converte a matriz atual em uma Matriz Identidade
     void I() {
         #pragma omp parallel for
         for(size_t i = 0; i < r; i++) {
             for(size_t j = 0; j < c; j++) {
                 if(i == j) {
-                    (*this)(i, j) = 1;
+                    (*this)(i, j) = 1; // 1 na diagonal
                 } else {
-                    (*this)(i, j) = 0;
+                    (*this)(i, j) = 0; // 0 no resto
                 }
             }
         }
     }
 
-    void operator*=(const Matrix& o) {
-        (*this) = (*this) * o;
-    }
-
-    void operator*=(T v) {
-        (*this) = (*this) * v;
-    }
-
-    void operator+=(const Matrix& o) {
-        (*this) = (*this) + o;
-    }
-
-    void operator+=(T v) {
-        (*this) = (*this) + v;
-    }
-
-    void operator-=(const Matrix& o) {
-        (*this) =  (*this) - o;
-    }
-
-    void operator-=(T v) {
-        (*this) = (*this) - v;
-    }
+    void operator*=(const Matrix& o) { (*this) = (*this) * o; }
+    void operator*=(T v) { (*this) = (*this) * v; }
+    void operator+=(const Matrix& o) { (*this) = (*this) + o; }
+    void operator+=(T v) { (*this) = (*this) + v; }
+    void operator-=(const Matrix& o) { (*this) =  (*this) - o; }
+    void operator-=(T v) { (*this) = (*this) - v; }
 };
