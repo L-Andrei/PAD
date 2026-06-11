@@ -192,18 +192,18 @@ class Matrix {
                 for (size_t k_b = 0; k_b < dados->cols_a; k_b += BLOCK) {
                     
                     // Limites seguros para não estourar o tamanho da matriz
-                    size_t i_b_max = std::min(i_b + BLOCK, dados->linha_fim);
-                    size_t j_b_max = std::min(j_b + BLOCK, dados->cols_o);
-                    size_t k_b_max = std::min(k_b + BLOCK, dados->cols_a);
+                    size_t i_b_max = min(i_b + BLOCK, dados->linha_fim);
+                    size_t j_b_max = min(j_b + BLOCK, dados->cols_o);
+                    size_t k_b_max = min(k_b + BLOCK, dados->cols_a);
 
                     // Iterando através dos sub-blocos
                     for (size_t i_sb = i_b; i_sb < i_b_max; i_sb += SUB_BLOCK) {
                         for (size_t j_sb = j_b; j_sb < j_b_max; j_sb += SUB_BLOCK) {
                             for (size_t k_sb = k_b; k_sb < k_b_max; k_sb += SUB_BLOCK) {
                                 
-                                size_t i_max = std::min(i_sb + SUB_BLOCK, i_b_max);
-                                size_t j_max = std::min(j_sb + SUB_BLOCK, j_b_max);
-                                size_t k_max = std::min(k_sb + SUB_BLOCK, k_b_max);
+                                size_t i_max = min(i_sb + SUB_BLOCK, i_b_max);
+                                size_t j_max = min(j_sb + SUB_BLOCK, j_b_max);
+                                size_t k_max = min(k_sb + SUB_BLOCK, k_b_max);
 
                                 // Multiplicação real acontecendo aqui dentro
                                 for (size_t i = i_sb; i < i_max; i++) {
@@ -255,9 +255,9 @@ class Matrix {
         }
 
         // Divide o trabalho com base no número de núcleos físicos/lógicos do CPU
-        size_t num_threads = std::thread::hardware_concurrency();
-        std::vector<pthread_t> threads(num_threads);
-        std::vector<ThreadDataSIMD> dados_das_threads(num_threads);
+        size_t num_threads = (thread::hardware_concurrency()/2)-1;
+        vector<pthread_t> threads(num_threads);
+        vector<ThreadDataSIMD> dados_das_threads(num_threads);
 
         size_t linhas_por_thread = r / num_threads;
         size_t linhas_restantes = r % num_threads;
