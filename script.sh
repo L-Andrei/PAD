@@ -3,12 +3,11 @@
 ARQUIVO_CSV="resultados_benchmark.csv"
 TOTAL_EXECUCOES=30
 
-ULTIMO_NUCLEO=$(($(nproc)-1))
-
-# Configuração de afinidade da CPU
-# Por padrão, usa todos os núcleos (0 até o último).
-# Lê a topologia e extrai apenas o primeiro núcleo lógico associado a cada núcleo físico
 CORES_PERMITIDOS=$(lscpu -p=cpu,core | grep -v '^#' | awk -F, '!seen[$2]++ {print $1}' | paste -sd, -)
+
+echo "Desativando o Turbo Boost da CPU..."
+echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost > /dev/null
+
 echo "codigo_ingenuo,opemMP,otimizacao_sequencial,pThread" > "$ARQUIVO_CSV"
 
 for (( i=1; i<=TOTAL_EXECUCOES; i++ ))
@@ -37,5 +36,8 @@ do
     
     echo "Rodada $i de $TOTAL_EXECUCOES concluída com sucesso."
 done
+
+echo "Reativando o Turbo Boost da CPU..."
+echo 1 | sudo tee /sys/devices/system/cpu/cpufreq/boost > /dev/null
 
 echo "Processo finalizado. Os dados foram salvos no arquivo $ARQUIVO_CSV."
