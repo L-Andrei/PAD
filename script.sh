@@ -5,7 +5,6 @@ TOTAL_EXECUCOES=30
 
 CORES_PERMITIDOS=$(lscpu -p=cpu,core | grep -v '^#' | awk -F, '!seen[$2]++ {print $1}' | paste -sd, -)
 
-echo "Desativando o Turbo Boost da CPU..."
 echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost > /dev/null
 
 echo "codigo_ingenuo,opemMP,otimizacao_sequencial,pThread" > "$ARQUIVO_CSV"
@@ -37,7 +36,6 @@ do
     echo "Rodada $i de $TOTAL_EXECUCOES concluída com sucesso."
 done
 
-echo "Reativando o Turbo Boost da CPU..."
 echo 1 | sudo tee /sys/devices/system/cpu/cpufreq/boost > /dev/null
 
 echo "Processo finalizado. Os dados foram salvos no arquivo $ARQUIVO_CSV."
