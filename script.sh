@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ARQUIVO_CSV="resultados_benchmark.csv"
-TOTAL_EXECUCOES=30
+TOTAL_EXECUCOES=20
 
 # Fixando os núcleos permitidos para 0, 2 e 6
 CORES_PERMITIDOS="0,2,6"
@@ -16,26 +16,26 @@ do
     echo "Execução $i de $TOTAL_EXECUCOES..."
     
     cd matrizes/codigo_ingenuo || exit
-    g++ -Wall -Wextra -std=c++20 -O3 main.cpp -o executar_testes
+    g++ -std=c++20 -O3 main.cpp -o executar_testes
     tempo_ingenuo=$(sudo nice -n -20 taskset -c $CORES_PERMITIDOS ./executar_testes)
     gflops_ingenuo=$(echo $tempo_ingenuo | awk '{printf "%.2f", (2 * 4096^3) / ($1 * 1000000000)}')
     cd ../..
 
     cd matrizes/opemMP || exit
-    g++ -Wall -Wextra -std=c++20 -O3 -fopenmp -mavx2 -mfma main.cpp -o executar_testes
+    g++ -std=c++20 -O3 -fopenmp -mavx2 -mfma main.cpp -o executar_testes
     tempo_openmp=$(sudo nice -n -20 taskset -c $CORES_PERMITIDOS ./executar_testes)
     gflops_openmp=$(echo $tempo_openmp | awk '{printf "%.2f", (2 * 4096^3) / ($1 * 1000000000)}')
     cd ../..
 
     cd matrizes/otimizacao_sequencial || exit
-    g++ -O3 -mavx2 -mfma -march=native main.cpp -o executar_testes
+    g++ -std=c++20 -O3 -mavx2 -mfma  main.cpp -o executar_testes
     tempo_seq=$(sudo nice -n -20 taskset -c $CORES_PERMITIDOS ./executar_testes)
     gflops_seq=$(echo $tempo_seq | awk '{printf "%.2f", (2 * 4096^3) / ($1 * 1000000000)}')
     cd ../..
 
     # Assumindo que o diretório do pThread seja matrizes/pThread
     cd matrizes/pThread || exit
-    g++ -Wall -Wextra -std=c++20 -O3 -pthread main.cpp -o executar_testes
+    g++ -std=c++20 -O3 -mavx2 -mfma -pthread main.cpp -o executar_testes
     tempo_pthread=$(sudo nice -n -20 taskset -c $CORES_PERMITIDOS ./executar_testes)
     gflops_pthread=$(echo $tempo_pthread | awk '{printf "%.2f", (2 * 4096^3) / ($1 * 1000000000)}')
     cd ../..
