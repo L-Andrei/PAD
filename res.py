@@ -7,6 +7,6 @@ df = pd.read_csv('resultados_benchmark.csv')
 resultados = pd.DataFrame({
     'Média': df.mean(),
     'Mediana': df.median()
-})
+}).round(2)
 
 print(resultados)
