@@ -4,7 +4,7 @@
 #include <experimental/simd>
 
 using namespace std;
-// Usamos um alias para facilitar a digitação, já que a biblioteca SIMD ainda está na namespace experimental
+// Alias para SIMD
 namespace stdx = std::experimental;
 
 template <typename T>
