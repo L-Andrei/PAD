@@ -9,8 +9,6 @@
 using namespace std;
 namespace stdx = std::experimental;
 
-// Classe de matriz genérica. O uso de template permite que ela funcione 
-// com int, float, double, etc., sem precisar reescrever o código.
 template <typename T>
 class Matrix {
 
@@ -19,13 +17,11 @@ class Matrix {
     size_t c; // Número de colunas (columns)
     
     // Os dados são armazenados em um array 1D contínuo na memória (Row-major layout).
-    // Isso é muito melhor para o cache do processador do que usar ponteiros duplos (T**).
     T* d; 
 
     public:
 
     // Estrutura para passar os argumentos para as threads do pthreads.
-    // Como a API do pthread em C exige um (void*), precisamos empacotar tudo aqui.
     struct ThreadDataSIMD {
         const Matrix* mat_a;
         const Matrix* mat_o_t; // Matriz B transposta (para acesso contíguo)
@@ -99,7 +95,6 @@ class Matrix {
     }
 
     // Sobrecarga do operador () para acessar os elementos fácil: mat(linha, coluna)
-    // O cálculo j + (c * i) mapeia a coordenada 2D para o índice 1D.
     T& operator()(size_t i, size_t j) {
         return d[j + (this->c * i)];
     }
@@ -172,16 +167,12 @@ class Matrix {
         return res;
     }
 
-    // =========================================================================
-    // Core da otimização: Multiplicação usando SIMD + Cache Blocking (Tiling)
-    // =========================================================================
     static void* rotina_simd(void* argumento) {
         ThreadDataSIMD* dados = static_cast<ThreadDataSIMD*>(argumento);
         
-        // Estes tamanhos quebram a matriz em pedaços menores para que caibam 
-        // perfeitamente no cache L1/L2 do processador. Evita "cache misses" frequentes.
-        constexpr size_t BLOCK = 256;
-        constexpr size_t SUB_BLOCK = 128; 
+        // Estes tamanhos quebram a matriz em pedaços menores para que caibam no cache L1 e L2 
+        constexpr size_t BLOCK = 128;
+        constexpr size_t SUB_BLOCK = 64; 
         
         using simd_t = stdx::native_simd<T>;
         constexpr size_t SIMD_WIDTH = simd_t::size();
@@ -213,7 +204,6 @@ class Matrix {
                                         size_t k = k_sb;
 
                                         // Vetorização (SIMD): processa vários elementos em um único ciclo de clock.
-                                        // Usar element_aligned garante performance máxima se a memória estiver alinhada.
                                         for (; k + SIMD_WIDTH <= k_max; k += SIMD_WIDTH) {
                                             simd_t a_vec(&((*dados->mat_a)(i, k)), stdx::element_aligned);
                                             simd_t b_vec(&((*dados->mat_o_t)(j, k)), stdx::element_aligned);
@@ -223,7 +213,7 @@ class Matrix {
                                         // Reduz o vetor SIMD para um escalar somando os elementos internos
                                         T scalar_sum = stdx::reduce(sum_vec);
 
-                                        // Tratamento do "resto" (quando as colunas não são múltiplas da largura do SIMD)
+                                        // Tratamento do resto
                                         for (; k < k_max; k++) {
                                             scalar_sum += (*dados->mat_a)(i, k) * (*dados->mat_o_t)(j, k);
                                         }
@@ -245,8 +235,6 @@ class Matrix {
         Matrix res(r, o.column());
 
         // Truque clássico de performance: transpor a matriz B antes de multiplicar.
-        // Isso faz com que a leitura na matriz B seja sequencial (friendly pro Cache L1), 
-        // em vez de saltar posições de memória lendo as colunas verticalmente.
         Matrix o_t(o.column(), o.row());
         for(size_t i = 0; i < o.row(); i++) {
             for(size_t j = 0; j < o.column(); j++) {
@@ -255,7 +243,7 @@ class Matrix {
         }
 
         // Divide o trabalho com base no número de núcleos físicos/lógicos do CPU
-        size_t num_threads = (thread::hardware_concurrency()/2)-1;
+        size_t num_threads = (thread::hardware_concurrency()/2)-1; // Não vai funcionar em CPU dual-core.
         vector<pthread_t> threads(num_threads);
         vector<ThreadDataSIMD> dados_das_threads(num_threads);
 
@@ -266,7 +254,7 @@ class Matrix {
         // Dispara as threads
         for (int i = 0; i < num_threads; ++i) {
             dados_das_threads[i].mat_a = this;
-            dados_das_threads[i].mat_o_t = &o_t; // Passamos a versão transposta!
+            dados_das_threads[i].mat_o_t = &o_t; // Passamos a versão transposta
             dados_das_threads[i].res = &res;
             dados_das_threads[i].cols_a = c;
             dados_das_threads[i].cols_o = o.column();
