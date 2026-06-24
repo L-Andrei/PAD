@@ -7,8 +7,6 @@ using namespace std;
 // Usamos um alias para facilitar a digitação, já que a biblioteca SIMD ainda está na namespace experimental
 namespace stdx = std::experimental;
 
-// Transformar a classe em um Template permite que a mesma lógica funcione 
-// para matrizes de int, float, double, etc., sem precisarmos reescrever o código.
 template <typename T>
 class Matrix {
 
@@ -17,8 +15,6 @@ class Matrix {
     size_t c; // Quantidade de colunas (columns)
     
     // Os dados são armazenados em um array 1D contínuo na memória (Row-major layout).
-    // Por que não usar ponteiros duplos (T**)? Porque arrays contínuos são muito mais 
-    // amigáveis para o cache do processador, evitando saltos desnecessários de memória.
     T* d;
 
     public:
@@ -103,7 +99,7 @@ class Matrix {
         return d[j + (this->c * i)];
     }
 
-    // Operador de Atribuição (matrizA = matrizB). Também exige cuidado manual com a memória.
+    // Operador de Atribuição (matrizA = matrizB).
     Matrix& operator=(const Matrix& o) {
         // Proteção contra auto-atribuição (alguém fazendo mat = mat)
         if (this == &o) { 
@@ -122,10 +118,7 @@ class Matrix {
         return *this;
     }
 
-    // =========================================================================
-    // Operações Matemáticas Básicas Elemento-a-Elemento
-    // =========================================================================
-    
+    // Soma de matrizes
     Matrix operator+(const Matrix& o) const {
         Matrix res(r, c);
         for (size_t i = 0; i < r; i++) {
@@ -166,25 +159,19 @@ class Matrix {
         return res;
     }
 
-    // =========================================================================
-    // Core da Otimização: Multiplicação com Tiling e SIMD
-    // =========================================================================
     Matrix operator*(const Matrix& o) const {
         Matrix res(r, o.column());
 
-        // Tamanhos dos blocos para o Cache Tiling.
+        
         // O objetivo é quebrar a matriz em pedaços que caibam inteiros no cache L1/L2 do CPU.
-        // Se a CPU não precisar buscar dados na RAM a todo momento, a velocidade decola.
-        constexpr size_t BLOCK = 256;
-        constexpr size_t SUB_BLOCK = 128; 
+        constexpr size_t BLOCK = 128;
+        constexpr size_t SUB_BLOCK = 64; 
         
         // Configurando os registradores vetoriais para processar múltiplos elementos por vez.
         using simd_t = stdx::native_simd<T>;
         constexpr size_t SIMD_WIDTH = simd_t::size();
 
-        // Truque clássico: Transpor a segunda matriz antes de começar.
-        // Ao transpor, passamos a acessar a memória de forma contínua (horizontal) na matriz o_t,
-        // o que o hardware prefetcher da CPU adora. Acessar colunas verticalmente destruiria a performance.
+        // Transpor a segunda matriz antes de começar.
         Matrix o_t(o.column(), o.row());
         for(size_t i = 0; i < o.row(); i++) {
             for(size_t j = 0; j < o.column(); j++) {
@@ -218,7 +205,6 @@ class Matrix {
                                         simd_t sum_vec = 0;
                                         size_t k = k_sb;
 
-                                        // Aqui a mágica do SIMD acontece. Em vez de multiplicar um por um,
                                         // pegamos pacotes de dados (SIMD_WIDTH) e multiplicamos no mesmo ciclo de clock.
                                         for (; k + SIMD_WIDTH <= k_max; k += SIMD_WIDTH) {
                                             // 'element_aligned' avisa ao compilador que a memória tá alinhadinha, garantindo máxima velocidade.
@@ -230,8 +216,7 @@ class Matrix {
                                         // Pega o vetor de somas e junta tudo num único número escalar
                                         T scalar_sum = stdx::reduce(sum_vec);
 
-                                        // Tratamento do resto. Se a quantidade de elementos não for um múltiplo exato 
-                                        // do tamanho do nosso pacote SIMD, fazemos o restinho do jeito tradicional.
+                                        // Tratamento do resto.
                                         for (; k < k_max; k++) {
                                             scalar_sum += (*this)(i, k) * o_t(j, k);
                                         }
