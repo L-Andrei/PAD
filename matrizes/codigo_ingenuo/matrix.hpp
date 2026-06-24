@@ -1,7 +1,7 @@
 #include <iostream>
 #include <initializer_list>
 #include <algorithm>
-#include <experimental/simd> // Mantido do seu original, mas sem uso prático nesta versão
+#include <experimental/simd> 
 
 using namespace std;
 namespace stdx = std::experimental;
@@ -14,7 +14,6 @@ class Matrix {
     size_t c; // Colunas (columns)
     
     // Matriz armazenada internamente como um array 1D (Row-major layout).
-    // Evitar ponteiros duplos (T**) melhora significativamente a localidade do cache.
     T* d;
 
     public:
