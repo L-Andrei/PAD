@@ -125,16 +125,11 @@ class Matrix {
         return *this;
     }
 
-    // =========================================================================
-    // Operações Matemáticas (Aceleradas por OpenMP)
-    // =========================================================================
-
     // Soma elemento a elemento
     Matrix operator+(const Matrix& o) const {
         Matrix res(r, c);
 
-        // O OpenMP vai paralelizar o laço mais externo (as linhas).
-        // Cada thread da CPU vai processar um conjunto de linhas de forma independente.
+        // Paralelisa laços mais extremos
         #pragma omp parallel for
         for (size_t i = 0; i < r; i++) {
             for(size_t j = 0; j < c; j++) {
@@ -183,20 +178,17 @@ class Matrix {
         return res;
     }
 
-    // =========================================================================
-    // Core da Otimização: A "Trindade" da Performance 
-    // (OpenMP + Cache Tiling + Instruções SIMD)
-    // =========================================================================
+    //Multiplicação de matrizes otimizada
     Matrix operator*(const Matrix& o) const {
         Matrix res(r, o.column());
 
         // Tamanhos dos blocos para o "Cache Blocking" ou "Tiling".
         // O objetivo é fragmentar o cálculo em pedaços pequenos o suficiente 
         // para residirem no cache L1 do processador durante as operações.
-        constexpr size_t BLOCK = 256;
-        constexpr size_t SUB_BLOCK = 128; 
+        constexpr size_t BLOCK = 128;
+        constexpr size_t SUB_BLOCK = 64; 
         
-        // Setup para as instruções SIMD (Single Instruction, Multiple Data)
+        // Setup para as instruções SIMD 
         using simd_t = stdx::native_simd<T>;
         constexpr size_t SIMD_WIDTH = simd_t::size();
 
