@@ -2,13 +2,12 @@
 #include <initializer_list>
 #include <algorithm>
 #include <experimental/simd>
-#include <omp.h> // Biblioteca do OpenMP para multithreading simplificado
+#include <omp.h> 
 
 using namespace std;
 // Alias para encurtar a digitação da biblioteca SIMD (que ainda é experimental no C++)
 namespace stdx = std::experimental;
 
-// Classe genérica para Matrizes, usando Template para aceitar int, float, double, etc.
 template <typename T>
 class Matrix {
 
@@ -16,10 +15,7 @@ class Matrix {
     size_t r; // Número de linhas (rows)
     size_t c; // Número de colunas (columns)
     
-    // Os dados são armazenados de forma contígua (Row-major layout).
-    // O array 1D é a melhor escolha para performance, pois a CPU consegue
-    // carregar blocos inteiros da memória para o Cache de uma só vez, 
-    // evitando os famosos "cache misses" que ponteiros duplos causariam.
+    // Row-major
     T* d;
 
     public:
