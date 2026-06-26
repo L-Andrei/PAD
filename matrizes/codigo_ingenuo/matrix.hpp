@@ -62,7 +62,7 @@ class Matrix {
         }
     }
 
-    // Construtor de cópia: essencial para evitar que duas matrizes apontem para a mesma memória
+    // Construtor de cópia.
     Matrix(const Matrix& o) {
         this->r = o.r;
         this->c = o.c;
