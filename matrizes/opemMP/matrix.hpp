@@ -32,8 +32,6 @@ class Matrix {
 
         size_t sum = r * c;
 
-        // O OpenMP entra em ação aqui. Essa diretiva diz ao compilador para 
-        // dividir as iterações desse loop 'for' entre as threads disponíveis na CPU.
         #pragma omp parallel for
         for(size_t k = 0; k < sum; k++) {
             d[k] = 0;
@@ -70,7 +68,6 @@ class Matrix {
         this->c = j;
         d = new T[r * c];
 
-        // Paralelizando a cópia dos dados com OpenMP
         #pragma omp parallel for
         for (size_t k = 0; k < r * c; ++k) {
             d[k] = data_array[k];
@@ -95,7 +92,6 @@ class Matrix {
     }
 
     // Sobrecarga do operador () para acessar elementos via mat(linha, coluna).
-    // O cálculo j + (c * i) faz o mapeamento do plano 2D para o índice 1D no array.
     T& operator()(size_t i, size_t j) {
         return d[j + (this->c * i)];
     }
@@ -183,18 +179,14 @@ class Matrix {
         Matrix res(r, o.column());
 
         // Tamanhos dos blocos para o "Cache Blocking" ou "Tiling".
-        // O objetivo é fragmentar o cálculo em pedaços pequenos o suficiente 
-        // para residirem no cache L1 do processador durante as operações.
-        constexpr size_t BLOCK = 128;
-        constexpr size_t SUB_BLOCK = 64; 
+        constexpr size_t BLOCK = 256;
+        constexpr size_t SUB_BLOCK = 16; 
         
         // Setup para as instruções SIMD 
         using simd_t = stdx::native_simd<T>;
         constexpr size_t SIMD_WIDTH = simd_t::size();
 
-        // 1º Passo: Transpor a Matriz B. 
-        // Lemos matrizes da esquerda pra direita de forma rápida. Lemos de cima para baixo 
-        // de forma muito lenta. Transpor a segunda matriz alinha os dados e evita engasgos na memória.
+        // Transpor a Matriz B.
         Matrix o_t(o.column(), o.row());
         for(size_t i = 0; i < o.row(); i++) {
             for(size_t j = 0; j < o.column(); j++) {
@@ -202,8 +194,7 @@ class Matrix {
             }
         }
 
-        // 2º Passo: Multithreading.
-        // Paralelizamos a iteração dos blocos externos. Cada thread pega um naco da matriz.
+
         #pragma omp parallel for
         for (size_t i_b = 0; i_b < r; i_b += BLOCK) {
             for (size_t j_b = 0; j_b < o.column(); j_b += BLOCK) {
@@ -230,7 +221,6 @@ class Matrix {
                                         simd_t sum_vec = 0;
                                         size_t k = k_sb;
 
-                                        // 3º Passo: Vetorização (SIMD).
                                         // A CPU faz várias multiplicações num único pulso de clock.
                                         for (; k + SIMD_WIDTH <= k_max; k += SIMD_WIDTH) {
                                             // 'element_aligned' afirma que a memória está perfeitamente alinhada
@@ -239,10 +229,10 @@ class Matrix {
                                             sum_vec += a_vec * b_vec; 
                                         }
 
-                                        // Reduz o vetor carregado em um único número (escalar)
+                                        // Soma todo vetor em um único elemento.
                                         T scalar_sum = stdx::reduce(sum_vec);
 
-                                        // Calcula qualquer rebarba que tenha sobrado e não coube no SIMD
+                                        // Calcula as sobras
                                         for (; k < k_max; k++) {
                                             scalar_sum += (*this)(i, k) * o_t(j, k);
                                         }

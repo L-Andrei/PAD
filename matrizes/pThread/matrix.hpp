@@ -24,7 +24,7 @@ class Matrix {
     // Estrutura para passar os argumentos para as threads do pthreads.
     struct ThreadDataSIMD {
         const Matrix* mat_a;
-        const Matrix* mat_o_t; // Matriz B transposta (para acesso contíguo)
+        const Matrix* mat_o_t; // Matriz B transposta
         Matrix* res;           // Onde o resultado será gravado
         size_t linha_inicio;
         size_t linha_fim;
@@ -170,14 +170,13 @@ class Matrix {
     static void* rotina_simd(void* argumento) {
         ThreadDataSIMD* dados = static_cast<ThreadDataSIMD*>(argumento);
         
-        // Estes tamanhos quebram a matriz em pedaços menores para que caibam no cache L1 e L2 
-        constexpr size_t BLOCK = 128;
-        constexpr size_t SUB_BLOCK = 64; 
+        constexpr size_t BLOCK = 256;
+        constexpr size_t SUB_BLOCK = 16; 
         
         using simd_t = stdx::native_simd<T>;
         constexpr size_t SIMD_WIDTH = simd_t::size();
 
-        // Loop Tiling: iterando através dos blocos maiores
+        // Loop Tiling
         for (size_t i_b = dados->linha_inicio; i_b < dados->linha_fim; i_b += BLOCK) {
             for (size_t j_b = 0; j_b < dados->cols_o; j_b += BLOCK) {
                 for (size_t k_b = 0; k_b < dados->cols_a; k_b += BLOCK) {
@@ -187,7 +186,7 @@ class Matrix {
                     size_t j_b_max = min(j_b + BLOCK, dados->cols_o);
                     size_t k_b_max = min(k_b + BLOCK, dados->cols_a);
 
-                    // Iterando através dos sub-blocos
+
                     for (size_t i_sb = i_b; i_sb < i_b_max; i_sb += SUB_BLOCK) {
                         for (size_t j_sb = j_b; j_sb < j_b_max; j_sb += SUB_BLOCK) {
                             for (size_t k_sb = k_b; k_sb < k_b_max; k_sb += SUB_BLOCK) {
@@ -196,7 +195,7 @@ class Matrix {
                                 size_t j_max = min(j_sb + SUB_BLOCK, j_b_max);
                                 size_t k_max = min(k_sb + SUB_BLOCK, k_b_max);
 
-                                // Multiplicação real acontecendo aqui dentro
+                                // Multiplicação
                                 for (size_t i = i_sb; i < i_max; i++) {
                                     for (size_t j = j_sb; j < j_max; j++) {
                                         
@@ -210,7 +209,7 @@ class Matrix {
                                             sum_vec += a_vec * b_vec; 
                                         }
 
-                                        // Reduz o vetor SIMD para um escalar somando os elementos internos
+                                        // Soma todo vetor em um único elemento.
                                         T scalar_sum = stdx::reduce(sum_vec);
 
                                         // Tratamento do resto
@@ -230,11 +229,11 @@ class Matrix {
         return nullptr;
     }
 
-    // Operador de Multiplicação de Matrizes (Otimizado com Multithreading)
+    // Operador de Multiplicação de Matrizes
     Matrix operator*(const Matrix& o) const {
         Matrix res(r, o.column());
 
-        // Truque clássico de performance: transpor a matriz B antes de multiplicar.
+        // Transpoem Matriz B
         Matrix o_t(o.column(), o.row());
         for(size_t i = 0; i < o.row(); i++) {
             for(size_t j = 0; j < o.column(); j++) {
@@ -243,7 +242,7 @@ class Matrix {
         }
 
         // Divide o trabalho com base no número de núcleos físicos/lógicos do CPU
-        size_t num_threads = (thread::hardware_concurrency()/2)-1; // Não vai funcionar em CPU dual-core.
+        size_t num_threads = 3; // Feito só para o meu computador
         vector<pthread_t> threads(num_threads);
         vector<ThreadDataSIMD> dados_das_threads(num_threads);
 
@@ -295,7 +294,7 @@ class Matrix {
                 n(j, i) = (*this)(i, j);
             }
         }
-        (*this) = n; // Usa o operator= que já implementamos
+        (*this) = n; 
     }
 
     // Transforma a matriz atual em uma Matriz Identidade

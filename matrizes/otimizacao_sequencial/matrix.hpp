@@ -11,10 +11,10 @@ template <typename T>
 class Matrix {
 
     private:
-    size_t r; // Quantidade de linhas (rows)
-    size_t c; // Quantidade de colunas (columns)
+    size_t r; // Quantidade de linhas
+    size_t c; // Quantidade de colunas 
     
-    // Os dados são armazenados em um array 1D contínuo na memória (Row-major layout).
+    //Row-major layout).
     T* d;
 
     public:
@@ -36,8 +36,7 @@ class Matrix {
         }
     }
 
-    // Construtor com initializer_list. Permite criar a matriz usando uma sintaxe super limpa.
-    // Exemplo: Matrix<int> m(2, 2, {1, 2, 3, 4});
+    // Construtor com initializer_list.
     Matrix(size_t i, size_t j, initializer_list<T> list) {
         this->r = i;
         this->c = j;
@@ -71,8 +70,7 @@ class Matrix {
         }
     }
 
-    // Construtor de Cópia. Extremamente necessário quando lidamos com ponteiros crus (T* d).
-    // Isso evita que duas matrizes apontem para o mesmo endereço de memória.
+    // Construtor de Cópia. 
     Matrix(const Matrix& o) {
         this->r = o.r;
         this->c = o.c;
@@ -89,12 +87,10 @@ class Matrix {
     }
 
     // Sobrecarga do operador () para acessar elementos facilmente: mat(linha, coluna).
-    // A fórmula 'j + (c * i)' converte as coordenadas 2D para o índice exato no array 1D.
     T& operator()(size_t i, size_t j) {
         return d[j + (this->c * i)];
     }
 
-    // Versão 'const' do acesso de elementos, para quando passamos a matriz como referência constante.
     const T& operator()(size_t i, size_t j) const {
         return d[j + (this->c * i)];
     }
@@ -164,8 +160,8 @@ class Matrix {
 
         
         // O objetivo é quebrar a matriz em pedaços que caibam inteiros no cache L1/L2 do CPU.
-        constexpr size_t BLOCK = 128;
-        constexpr size_t SUB_BLOCK = 64; 
+        constexpr size_t BLOCK = 256;
+        constexpr size_t SUB_BLOCK = 16; 
         
         // Configurando os registradores vetoriais para processar múltiplos elementos por vez.
         using simd_t = stdx::native_simd<T>;
@@ -179,17 +175,17 @@ class Matrix {
             }
         }
 
-        // Loop Tiling: Navegando pelos Blocos Principais
+        // Loop Tiling
         for (size_t i_b = 0; i_b < r; i_b += BLOCK) {
             for (size_t j_b = 0; j_b < o.column(); j_b += BLOCK) {
                 for (size_t k_b = 0; k_b < c; k_b += BLOCK) {
                     
-                    // Garantindo que não vamos tentar ler fora da matriz
+                    // Calculo dos indices corretos da matriz
                     size_t i_b_max = min(i_b + BLOCK, r);
                     size_t j_b_max = min(j_b + BLOCK, o.column());
                     size_t k_b_max = min(k_b + BLOCK, c);
 
-                    // Loop Tiling: Navegando pelos Sub-Blocos (refinando ainda mais o cache)
+                    // Loop Tiling
                     for (size_t i_sb = i_b; i_sb < i_b_max; i_sb += SUB_BLOCK) {
                         for (size_t j_sb = j_b; j_sb < j_b_max; j_sb += SUB_BLOCK) {
                             for (size_t k_sb = k_b; k_sb < k_b_max; k_sb += SUB_BLOCK) {
@@ -207,13 +203,13 @@ class Matrix {
 
                                         // pegamos pacotes de dados (SIMD_WIDTH) e multiplicamos no mesmo ciclo de clock.
                                         for (; k + SIMD_WIDTH <= k_max; k += SIMD_WIDTH) {
-                                            // 'element_aligned' avisa ao compilador que a memória tá alinhadinha, garantindo máxima velocidade.
+                                            // 'element_aligned' avisa ao compilador que a memória tá alinhadinha.
                                             simd_t a_vec(&((*this)(i, k)), stdx::element_aligned);
                                             simd_t b_vec(&(o_t(j, k)), stdx::element_aligned);
                                             sum_vec += a_vec * b_vec; 
                                         }
 
-                                        // Pega o vetor de somas e junta tudo num único número escalar
+                                        // Soma todo vetor em um único elemento.
                                         T scalar_sum = stdx::reduce(sum_vec);
 
                                         // Tratamento do resto.
