@@ -32,6 +32,14 @@ class Matrix {
         size_t cols_o;
     };
 
+    // Estrutur para a paralelisação do tranpose da multiplicação.
+    struct ThreadTranspose {
+        const Matrix* origem;
+        Matrix* destino;
+        size_t linha_inicio;
+        size_t linha_fim;
+    };
+
     size_t column() const { return this->c; }
     size_t row() const { return this->r; }
 
@@ -167,6 +175,19 @@ class Matrix {
         return res;
     }
 
+    //Rotina para usar no Pthread.
+    static void* rotina_transpose(void* argumento) {
+    ThreadTranspose* dados = static_cast<ThreadTranspose*>(argumento);
+
+    for (size_t i = dados->linha_inicio; i < dados->linha_fim; i++) {
+        for (size_t j = 0; j < dados->origem->column(); j++) {
+            (*dados->destino)(j, i) = (*dados->origem)(i, j);
+        }
+    }
+
+    return nullptr;
+}
+    //Rotina para usar no Pthread.
     static void* rotina_simd(void* argumento) {
         ThreadDataSIMD* dados = static_cast<ThreadDataSIMD*>(argumento);
         
@@ -229,17 +250,44 @@ class Matrix {
         return nullptr;
     }
 
+    // Realizao Transpose da matriz.
+    static Matrix transpose_pthreads(const Matrix& m) {
+        // Função separada da matriz para melhorar a visualização de código da multiplicação. 
+        Matrix t(m.column(), m.row());
+
+        size_t num_threads = 3; 
+
+        vector<pthread_t> threads(num_threads);
+        vector<ThreadTranspose> dados(num_threads);
+
+        size_t linhas_por_thread = m.row() / num_threads;
+        size_t linhas_restantes = m.row() % num_threads;
+        size_t linha_atual = 0;
+
+        for (size_t i = 0; i < num_threads; i++) {
+            dados[i].origem = &m;
+            dados[i].destino = &t;
+
+            dados[i].linha_inicio = linha_atual;
+            linha_atual += linhas_por_thread + (i < linhas_restantes ? 1 : 0);
+            dados[i].linha_fim = linha_atual;
+
+            pthread_create(&threads[i], nullptr, rotina_transpose, &dados[i]);
+        }
+
+        for (size_t i = 0; i < num_threads; i++) {
+            pthread_join(threads[i], nullptr);
+        }
+
+        return t;
+    }
+
     // Operador de Multiplicação de Matrizes
     Matrix operator*(const Matrix& o) const {
         Matrix res(r, o.column());
 
         // Transpoem Matriz B
-        Matrix o_t(o.column(), o.row());
-        for(size_t i = 0; i < o.row(); i++) {
-            for(size_t j = 0; j < o.column(); j++) {
-                o_t(j, i) = o(i, j);
-            }
-        }
+        Matrix o_t = transpose_pthreads(o);
 
         // Divide o trabalho com base no número de núcleos físicos/lógicos do CPU
         size_t num_threads = 3; // Feito só para o meu computador

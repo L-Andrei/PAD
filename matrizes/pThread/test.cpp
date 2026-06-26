@@ -232,7 +232,7 @@ TEST(MatrixTest, CompoundOperators) {
     EXPECT_EQ(m(0, 0), 8);
 }
 
-/*
+
 TEST(MatrixTest, MultiplicationLarge2048_RandomDouble) {
     size_t size = 2048;
     
@@ -266,43 +266,4 @@ TEST(MatrixTest, MultiplicationLarge2048_RandomDouble) {
             EXPECT_NEAR(res_optimized(i, j), res_expected(i, j), 1e-5);
         }
     }
-}*/
-
-TEST(MatrixTest, MultiplicationMassive4098_RandomDouble) {
-    size_t size = 4098;
-    
-    Matrix<double> m1(size, size);
-    Matrix<double> m2(size, size);
-
-    std::mt19937 rng(42);
-    std::uniform_real_distribution<double> dist(-2.0, 2.0);
-
-    for (size_t i = 0; i < size; i++) {
-        for (size_t j = 0; j < size; j++) {
-            m1(i, j) = dist(rng);
-            m2(i, j) = dist(rng);
-        }
-    }
-
-    Matrix<double> res_optimized = m1 * m2;
-
-    EXPECT_EQ(res_optimized.row(), size);
-    EXPECT_EQ(res_optimized.column(), size);
-
-    auto verify_cell = [&](size_t row, size_t col) {
-        double expected = 0.0;
-        for (size_t k = 0; k < size; k++) {
-            expected += m1(row, k) * m2(k, col);
-        }
-        
-        EXPECT_NEAR(res_optimized(row, col), expected, 1e-9);
-    };
-
-    verify_cell(0, 0);
-    verify_cell(0, size - 1);
-
-    verify_cell(size / 2, size / 2);
-
-    verify_cell(size - 1, 0);
-    verify_cell(size - 1, size - 1);
 }

@@ -188,6 +188,7 @@ class Matrix {
 
         // Transpor a Matriz B.
         Matrix o_t(o.column(), o.row());
+        #pragma omp parallel for
         for(size_t i = 0; i < o.row(); i++) {
             for(size_t j = 0; j < o.column(); j++) {
                 o_t(j, i) = o(i, j);
