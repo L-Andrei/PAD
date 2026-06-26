@@ -6,6 +6,8 @@
 #include <vector>
 #include <pthread.h>
 
+// Código feito para verificar se as classes matrizes funcionavam.
+
 using namespace std;
 namespace stdx = std::experimental;
 

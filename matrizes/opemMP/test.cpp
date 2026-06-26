@@ -2,6 +2,9 @@
 #include <random>
 #include "matrix.hpp"
 
+// Código feito para verificar se as classes matrizes funcionavam.
+
+
 template <typename T>
 Matrix<T> simple_multiply(const Matrix<T>& m1, const Matrix<T>& m2) {
     Matrix<T> res(m1.row(), m2.column());

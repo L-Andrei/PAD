@@ -3,6 +3,8 @@
 #include <chrono>
 #include <random>
 
+//Codigo feito para o benchmark.
+
 using namespace std;
 
 int main() {
