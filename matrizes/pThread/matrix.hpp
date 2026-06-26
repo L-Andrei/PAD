@@ -16,7 +16,6 @@ class Matrix {
     size_t r; // Número de linhas (rows)
     size_t c; // Número de colunas (columns)
     
-    // Os dados são armazenados em um array 1D contínuo na memória (Row-major layout).
     T* d; 
 
     public:
@@ -55,7 +54,7 @@ class Matrix {
         }
     }
 
-    // Construtor usando initializer_list para permitir sintaxe estilo: Matrix<int> m(2, 2, {1, 2, 3, 4});
+    // Construtor usando initializer_list
     Matrix(size_t i, size_t j, initializer_list<T> list) {
         this->r = i;
         this->c = j;
@@ -86,7 +85,7 @@ class Matrix {
         }
     }
 
-    // Construtor de cópia (Copy Constructor)
+    // Construtor de cópia
     Matrix(const Matrix& o) {
         this->r = o.r;
         this->c = o.c;
@@ -97,22 +96,22 @@ class Matrix {
         }
     }
 
-    // Destrutor: nunca esquecer de liberar a memória do array 1D!
+    // Destrutor.
     ~Matrix() {
         delete[] d;
     }
 
-    // Sobrecarga do operador () para acessar os elementos fácil: mat(linha, coluna)
+    // Sobrecarga do operador ()
     T& operator()(size_t i, size_t j) {
         return d[j + (this->c * i)];
     }
 
-    // Versão const do operador () para leitura em matrizes constantes.
+    // Versão const
     const T& operator()(size_t i, size_t j) const {
         return d[j + (this->c * i)];
     }
 
-    // Operador de atribuição (Copy Assignment)
+    // Operador de atribuição
     Matrix& operator=(const Matrix& o) {
         // Evita auto-atribuição (ex: matriz = matriz;)
         if (this == &o) { 

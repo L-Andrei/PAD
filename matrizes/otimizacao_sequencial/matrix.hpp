@@ -81,12 +81,12 @@ class Matrix {
         }
     }
 
-    // Destrutor. A regra de ouro do C++: se você deu 'new[]', você é obrigado a dar 'delete[]'.
+    // Destrutor.
     ~Matrix() {
         delete[] d;
     }
 
-    // Sobrecarga do operador () para acessar elementos facilmente: mat(linha, coluna).
+    // Sobrecarga do operador ()
     T& operator()(size_t i, size_t j) {
         return d[j + (this->c * i)];
     }
@@ -159,11 +159,11 @@ class Matrix {
         Matrix res(r, o.column());
 
         
-        // O objetivo é quebrar a matriz em pedaços que caibam inteiros no cache L1/L2 do CPU.
+        // Divisão de blocos.
         constexpr size_t BLOCK = 256;
         constexpr size_t SUB_BLOCK = 16; 
         
-        // Configurando os registradores vetoriais para processar múltiplos elementos por vez.
+        // Configurando os registradores vetoriais.
         using simd_t = stdx::native_simd<T>;
         constexpr size_t SIMD_WIDTH = simd_t::size();
 
@@ -201,7 +201,6 @@ class Matrix {
                                         simd_t sum_vec = 0;
                                         size_t k = k_sb;
 
-                                        // pegamos pacotes de dados (SIMD_WIDTH) e multiplicamos no mesmo ciclo de clock.
                                         for (; k + SIMD_WIDTH <= k_max; k += SIMD_WIDTH) {
                                             // 'element_aligned' avisa ao compilador que a memória tá alinhadinha.
                                             simd_t a_vec(&((*this)(i, k)), stdx::element_aligned);
@@ -229,7 +228,7 @@ class Matrix {
         return res;
     }
     
-    // Multiplicação por um valor escalar (Matriz * Número)
+    // Multiplicação por um valor escalar.
     Matrix operator*(T v) const {
         Matrix res(r, c);
 
@@ -253,7 +252,7 @@ class Matrix {
         (*this) = n; // Reutiliza o nosso operador de atribuição seguro
     }
 
-    // Transforma a matriz atual em uma Matriz Identidade (1 na diagonal principal, 0 no resto)
+    // Transforma a matriz atual em uma Matriz Identidade.
     void I() {
         for(size_t i = 0; i < r; i++) {
             for(size_t j = 0; j < c; j++) {
