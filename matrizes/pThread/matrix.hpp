@@ -213,6 +213,7 @@ class Matrix {
                         for (size_t j_sb = j_b; j_sb < j_b_max; j_sb += SUB_BLOCK) {
                             for (size_t k_sb = k_b; k_sb < k_b_max; k_sb += SUB_BLOCK) {
                                 
+                                // Limites seguros do bloco secundário.
                                 size_t i_max = min(i_sb + SUB_BLOCK, i_b_max);
                                 size_t j_max = min(j_sb + SUB_BLOCK, j_b_max);
                                 size_t k_max = min(k_sb + SUB_BLOCK, k_b_max);
@@ -224,7 +225,7 @@ class Matrix {
                                         simd_t sum_vec = 0;
                                         size_t k = k_sb;
 
-                                        // Vetorização (SIMD): processa vários elementos em um único ciclo de clock.
+                                        // For para realizar as operações SIMD
                                         for (; k + SIMD_WIDTH <= k_max; k += SIMD_WIDTH) {
                                             simd_t a_vec(&((*dados->mat_a)(i, k)), stdx::element_aligned);
                                             simd_t b_vec(&((*dados->mat_o_t)(j, k)), stdx::element_aligned);

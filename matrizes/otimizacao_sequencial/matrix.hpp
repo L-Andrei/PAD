@@ -59,7 +59,7 @@ class Matrix {
         }
     }
 
-    // Construtor que copia os dados de um array "C-style" cru já existente
+    // Construtor que copia os dados de um array
     Matrix(size_t i, size_t j, const T* data_array) {
         this->r = i;
         this->c = j;
@@ -180,7 +180,7 @@ class Matrix {
             for (size_t j_b = 0; j_b < o.column(); j_b += BLOCK) {
                 for (size_t k_b = 0; k_b < c; k_b += BLOCK) {
                     
-                    // Calculo dos indices corretos da matriz
+                    // Calculo dos indices corretos da matriz.
                     size_t i_b_max = min(i_b + BLOCK, r);
                     size_t j_b_max = min(j_b + BLOCK, o.column());
                     size_t k_b_max = min(k_b + BLOCK, c);
@@ -190,17 +190,19 @@ class Matrix {
                         for (size_t j_sb = j_b; j_sb < j_b_max; j_sb += SUB_BLOCK) {
                             for (size_t k_sb = k_b; k_sb < k_b_max; k_sb += SUB_BLOCK) {
                                 
+                                // Limites seguros do bloco secundário.
                                 size_t i_max = min(i_sb + SUB_BLOCK, i_b_max);
                                 size_t j_max = min(j_sb + SUB_BLOCK, j_b_max);
                                 size_t k_max = min(k_sb + SUB_BLOCK, k_b_max);
 
-                                // Multiplicação de fato
+                                // Multiplicação de fato.
                                 for (size_t i = i_sb; i < i_max; i++) {
                                     for (size_t j = j_sb; j < j_max; j++) {
                                         
                                         simd_t sum_vec = 0;
                                         size_t k = k_sb;
-
+                                        
+                                        // For para realizar as operações SIMD
                                         for (; k + SIMD_WIDTH <= k_max; k += SIMD_WIDTH) {
                                             // 'element_aligned' avisa ao compilador que a memória tá alinhadinha.
                                             simd_t a_vec(&((*this)(i, k)), stdx::element_aligned);
@@ -249,7 +251,7 @@ class Matrix {
                 n(j, i) = (*this)(i, j);
             }
         }
-        (*this) = n; // Reutiliza o nosso operador de atribuição seguro
+        (*this) = n; 
     }
 
     // Transforma a matriz atual em uma Matriz Identidade.
