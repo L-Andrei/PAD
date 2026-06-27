@@ -290,7 +290,7 @@ class Matrix {
         // Transpoem Matriz B
         Matrix o_t = transpose_pthreads(o);
 
-        // Divide o trabalho com base no número de núcleos físicos/lógicos do CPU
+        // Divide o trabalho com base no número de núcleos da CPU
         size_t num_threads = 3; // Feito só para o meu computador
         vector<pthread_t> threads(num_threads);
         vector<ThreadDataSIMD> dados_das_threads(num_threads);
