@@ -352,9 +352,9 @@ class Matrix {
         for(size_t i = 0; i < r; i++) {
             for(size_t j = 0; j < c; j++) {
                 if(i == j) {
-                    (*this)(i, j) = 1; // Diagonal principal
+                    (*this)(i, j) = 1; 
                 } else {
-                    (*this)(i, j) = 0; // Restante
+                    (*this)(i, j) = 0; 
                 }
             }
         }
