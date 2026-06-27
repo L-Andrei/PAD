@@ -33,7 +33,7 @@ do
     gflops_seq=$(echo $tempo_seq | awk '{printf "%.2f", (2 * 4096^3) / ($1 * 1000000000)}')
     cd ../..
 
-    # Assumindo que o diretório do pThread seja matrizes/pThread
+
     cd matrizes/pThread || exit
     g++ -std=c++20 -O3 -mavx2 -mfma -pthread main.cpp -o executar_testes
     tempo_pthread=$(sudo nice -n -20 taskset -c $CORES_PERMITIDOS ./executar_testes)

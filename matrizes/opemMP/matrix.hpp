@@ -180,7 +180,7 @@ class Matrix {
 
         // Tamanhos dos blocos para o "Tiling".
         constexpr size_t BLOCK = 256;
-        constexpr size_t SUB_BLOCK = 16; // pequeno o suficiente para caber no L1 do meu computador.
+        constexpr size_t SUB_BLOCK = 16; // pequeno o suficiente para caber no L1.
         
         // Setup para as instruções SIMD 
         using simd_t = stdx::native_simd<T>;
