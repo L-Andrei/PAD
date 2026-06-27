@@ -5,15 +5,15 @@
 #include <omp.h> 
 
 using namespace std;
-// Alias para encurtar a digitação da biblioteca SIMD (que ainda é experimental no C++)
+// Alias para encurtar a digitação da biblioteca SIMD
 namespace stdx = std::experimental;
 
 template <typename T>
 class Matrix {
 
     private:
-    size_t r; // Número de linhas (rows)
-    size_t c; // Número de colunas (columns)
+    size_t r; // Número de linhas
+    size_t c; // Número de colunas
     
     // Row-major
     T* d;

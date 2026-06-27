@@ -6,8 +6,6 @@
 #include <vector>
 #include <pthread.h>
 
-// Código feito para verificar se as classes matrizes funcionavam.
-
 using namespace std;
 namespace stdx = std::experimental;
 
@@ -15,8 +13,8 @@ template <typename T>
 class Matrix {
 
     private:
-    size_t r; // Número de linhas (rows)
-    size_t c; // Número de colunas (columns)
+    size_t r; // Número de linhas
+    size_t c; // Número de colunas 
     
     T* d; 
 

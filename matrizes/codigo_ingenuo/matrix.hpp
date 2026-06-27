@@ -10,10 +10,10 @@ template <typename T>
 class Matrix {
 
     private:
-    size_t r; // Linhas (rows)
-    size_t c; // Colunas (columns)
+    size_t r; // Linhas
+    size_t c; // Colunas
     
-    // Matriz armazenada internamente como um array 1D (Row-major layout).
+    // Matriz armazenada internamente como um array 1D.
     T* d;
 
     public:

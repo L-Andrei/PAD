@@ -11,8 +11,8 @@ template <typename T>
 class Matrix {
 
     private:
-    size_t r; // Quantidade de linhas
-    size_t c; // Quantidade de colunas 
+    size_t r; // linhas
+    size_t c; // colunas 
     
     //Row-major layout).
     T* d;
